@@ -39,6 +39,7 @@ from ultralytics.nn.modules import (
     C3x,
     CBFuse,
     CBLinear,
+    CBLinear_GN_woSILU,
     Classify,
     Concat,
     Conv,
@@ -1696,7 +1697,7 @@ def parse_model(d, ch, verbose=True):
             args.insert(1, [ch[x] for x in f])  # channels as second arg
         elif m is RTDETRDecoder:  # special case, channels arg must be passed in index 1
             args.insert(1, [ch[x] for x in f])
-        elif m is CBLinear:
+        elif m is CBLinear or m is CBLinear_GN_woSILU:
             c2 = args[0]
             c1 = ch[f]
             args = [c1, c2, *args[1:]]

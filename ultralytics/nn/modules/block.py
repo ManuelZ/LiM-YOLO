@@ -40,6 +40,7 @@ __all__ = (
     "C3x",
     "CBFuse",
     "CBLinear",
+    "CBLinear_GN_woSILU",
     "ContrastiveHead",
     "GhostBottleneck",
     "HGBlock",
@@ -1011,6 +1012,38 @@ class CBLinear(nn.Module):
         """Forward pass through CBLinear layer."""
         return self.conv(x).split(self.c2s, dim=1)
 
+class CBLinear_GN_woSILU(nn.Module):
+    """
+    CBLinear with GroupNorm ONLY (No Activation).
+    To keep the philosophy of YOLOv9 PGI (information preservation)
+    Proposed by: Seon-Hoon Kim et al., 2025. https://arxiv.org/pdf/2512.09700
+    """
+    def __init__(self, c1: int, c2s: List[int], k: int = 1, s: int = 1, p: Optional[int] = None, g: int = 1):
+        super().__init__()
+        self.c2s = c2s
+        out_channels = sum(c2s)
+        
+        default_groups = 32
+        if out_channels < default_groups:
+            num_groups = 1
+        elif out_channels % default_groups != 0:
+            for n in [16, 8, 4, 2]:
+                if out_channels % n == 0:
+                    num_groups = n
+                    break
+            else:
+                num_groups = 1
+        else:
+            num_groups = default_groups
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(c1, out_channels, k, s, autopad(k, p), groups=g, bias=False),
+            nn.GroupNorm(num_groups=num_groups, num_channels=out_channels)
+            # nn.SiLU(inplace=True)
+        )
+
+    def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
+        return self.conv(x).split(self.c2s, dim=1)
 
 class CBFuse(nn.Module):
     """CBFuse."""
